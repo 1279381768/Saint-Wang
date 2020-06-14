@@ -1,0 +1,647 @@
+#include <windows.h>
+#include "MyBitmap.h"
+#include "Right.h"
+#include "resource.h"
+#include "Build.h"
+#include "infomation.h"
+#pragma comment(lib,"Msimg32.lib" ) 
+///////////////////////////////////////////////////////////////////////////////
+
+static int   iTickTrigger=0;       //在后面循环中起到一个缓冲作用
+int          iTickCout;
+int          speed=12;
+BOOL         stop=false;
+POINT        pt; 
+POINT        pt1;
+bool         mousecleck=false;       //鼠标是否选种建筑
+HDC          GAMEDC;
+HBITMAP      GAMEBITMAP;
+HDC          GAMEDC1;
+HBITMAP      GAMEBITMAP1;
+HDC          GAMEDC2;
+HBITMAP      GAMEBITMAP2;
+HDC          TOOLDC;
+HDC          windowDC;
+int          toolnum;
+HDC          bulid;
+int          nowbuild=-1;                //目前屏幕上有几个建筑
+CBuild       bu[60];
+int          k;
+CMyBitmap    foe[12]={1,1,1,1,1,1,1,1,1,1,1,1}; 
+int          help=0;
+Cinfomation  info;
+int          pp;
+int          money=1000;
+int          guanka[50],jishu=1;
+bool         kaiguan[50];          //关卡开关
+int          shengming=30;
+int          daojishi=10;
+int          ll;
+///////////////////////////////////////////////////////////////////////////////
+void draw(HDC DC2,int x,int y);
+void tool(HDC DC2);
+void mousechange(int x ,int y);
+void drawinfo(HDC DC2,int x,int y);
+void checkinfo(HDC DC2,int x,int y);
+void story(HDC DC2,HDC windowDC,int &money);
+LRESULT CALLBACK WinSunProc(
+  HWND hwnd,      // handle to window
+  UINT uMsg,      // message identifier
+  WPARAM wParam,  // first message parameter
+  LPARAM lParam   // second message parameter
+);
+
+int WINAPI WinMain(
+  HINSTANCE hInstance,      // handle to current instance
+  HINSTANCE hPrevInstance,  // handle to previous instance
+  LPSTR lpCmdLine,          // command line
+  int nCmdShow              // show state
+)
+{
+	
+	WNDCLASS wndcls;
+	wndcls.cbClsExtra=0;
+	wndcls.cbWndExtra=0;
+	wndcls.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);  
+	wndcls.hInstance=hInstance;
+	wndcls.lpfnWndProc=WinSunProc;
+	wndcls.lpszClassName="firstgame";
+	wndcls.lpszMenuName=NULL;
+	wndcls.hCursor=LoadCursor(NULL,IDC_ARROW);
+	wndcls.hIcon=LoadIcon(NULL,IDI_APPLICATION);
+	wndcls.style=CS_HREDRAW | CS_VREDRAW;
+	RegisterClass(&wndcls);
+
+	HWND hwnd;
+	hwnd=CreateWindow("firstgame","tftftf......",WS_POPUPWINDOW|WS_CAPTION|WS_MINIMIZEBOX,300,0,645,510,NULL,NULL,hInstance,NULL);
+    if(!hwnd)
+	{
+      return FALSE;
+	}
+	ShowWindow(hwnd,SW_SHOWNORMAL);
+	UpdateWindow(hwnd);
+
+//////////////////////////////////////////////////////////////////////////////////////
+windowDC=GetDC(hwnd);  
+HDC DC1=CreateCompatibleDC(windowDC);
+HDC DC2=CreateCompatibleDC(windowDC);
+HDC DCbeiyong=CreateCompatibleDC(windowDC);
+bulid=DC2;
+HBITMAP PIC1=(HBITMAP)LoadImage(NULL,"pic\\other\\background.map",IMAGE_BITMAP,0,0,LR_LOADFROMFILE);
+HBITMAP HCOB=::CreateCompatibleBitmap(windowDC,640,482);
+HBITMAP Hbiyong=::CreateCompatibleBitmap(windowDC,640,482);
+SelectObject(DCbeiyong,Hbiyong);
+SelectObject(DC1,PIC1);
+SelectObject(DC2,HCOB);
+
+
+
+
+
+//CMyBitmap    foe1;
+CRight       rightt1;
+CRight       rightt2;
+CRight       rightt3;
+char buffer[20];
+char buffer1[20];
+
+//////////////////////////////////////////////////////////////////////////////////////////
+GAMEDC=CreateCompatibleDC(windowDC);//创建设备句柄	
+GAMEBITMAP=(HBITMAP)LoadImage(NULL,"pic\\wuqi\\1\\1.bmp",IMAGE_BITMAP,0,0,LR_LOADFROMFILE); 
+SelectObject(GAMEDC,GAMEBITMAP);//选入设备里
+::DeleteObject(GAMEBITMAP);
+
+GAMEDC1=CreateCompatibleDC(windowDC);//创建设备句柄	
+GAMEBITMAP1=(HBITMAP)LoadImage(NULL,"pic\\wuqi\\2\\1.bmp",IMAGE_BITMAP,0,0,LR_LOADFROMFILE); 
+SelectObject(GAMEDC1,GAMEBITMAP1);//选入设备里
+::DeleteObject(GAMEBITMAP1);
+
+GAMEDC2=CreateCompatibleDC(windowDC);//创建设备句柄	
+GAMEBITMAP2=(HBITMAP)LoadImage(NULL,"pic\\wuqi\\3\\1.bmp",IMAGE_BITMAP,0,0,LR_LOADFROMFILE); 
+SelectObject(GAMEDC2,GAMEBITMAP2);//选入设备里
+::DeleteObject(GAMEBITMAP2);
+int ff=0;
+for(int i=0;i<12;i++)
+{foe[i].y-=ff;
+ff+=30;
+}
+
+for(int i=0;i<50;i++)
+{
+guanka[i]=0;
+kaiguan[i]=false;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////
+	MSG msg;
+	
+	while(true)
+	{
+		::Sleep(1);                    //有效减少CPU使用率
+		if(::PeekMessage(&msg,NULL,0,0,PM_REMOVE))
+		{	
+			if(msg.message==WM_QUIT)
+			{
+				::DeleteDC(windowDC);
+				::DeleteDC(DC1);
+				::DeleteDC(DC2);
+				::DeleteDC(DCbeiyong);
+				break;
+			}
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);	
+		
+		}
+		
+		if(stop==false)
+		{
+			iTickCout=GetTickCount();//系统执行到现在的时间
+			if(iTickCout>iTickTrigger)
+			{
+				iTickTrigger=iTickCout+speed;
+				BitBlt(DC2,0,0,640,482,DC1,0,0,SRCCOPY);
+			   story(DC2,windowDC,money);
+	            if(money>=500)
+				rightt1.show(DC2,windowDC,"pic\\other\\1.bmp",519,196,40,40);
+				if(money>=1000)
+				rightt2.show(DC2,windowDC,"pic\\other\\2.bmp",555,196,40,40);	
+				if(money>=8000)
+				rightt3.show(DC2,windowDC,"pic\\other\\3.bmp",590,190,40,53);	
+               
+				for(k=0;k<=nowbuild;k++)
+				{									
+				bu[k].showbuild(DC2,windowDC,foe);
+			    
+				}
+				
+				tool(DC2);
+				info.drawinfo(DC2);
+				info.drawinfodown(DC2,windowDC);
+				sprintf(buffer,"金币: %d",money);
+				::SetTextColor(DC2,RGB(0,0,0));
+				::TextOut(DC2,535,419,buffer,strlen(buffer));
+				BitBlt(windowDC,0,0,640,482,DC2,0,0,SRCCOPY);
+			    
+				
+
+			}
+		}
+
+	}
+	return 0;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+
+
+
+LRESULT CALLBACK WinSunProc(
+  HWND hwnd,      // handle to window
+  UINT uMsg,      // message identifier
+  WPARAM wParam,  // first message parameter
+  LPARAM lParam   // second message parameter
+)
+{
+	switch(uMsg)
+	{
+	case WM_PAINT:
+
+		break;
+
+	case WM_LBUTTONDOWN:
+	    
+	   	pt1.x=LOWORD(lParam);
+        pt1.y=HIWORD(lParam);
+        draw(bulid,pt.x,pt.y);
+        mousechange(pt1.x ,pt1.y);
+        checkinfo(bulid,pt.x ,pt.y);
+	
+		break;
+
+	case WM_RBUTTONDOWN:
+	   
+		
+       mousecleck=false; 
+      
+
+		break;
+
+	case WM_MOUSEMOVE:     
+		pt.x=LOWORD(lParam); 
+        pt.y=HIWORD(lParam); 
+		drawinfo(bulid,(pt.x),(pt.y));
+		break;
+	case WM_CLOSE:
+		
+		DestroyWindow(hwnd);
+		
+		break;
+	case WM_DESTROY:
+	
+		PostQuitMessage(0);
+		break;
+	default:
+		return DefWindowProc(hwnd,uMsg,wParam,lParam);
+	}
+	return 0;
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void mousechange(int x ,int y)
+{
+	
+	if(x>=520&&x<=555&&y>=193&&y<=233)
+	{
+		
+		mousecleck=true;
+		toolnum=1;
+		TOOLDC=GAMEDC;
+		
+	}
+	else if(x>=555&&x<=584&&y>=193&&y<=233)
+	{
+		mousecleck=true;
+		toolnum=2;
+	    TOOLDC=GAMEDC1;
+	
+	}
+	else if(x>=590&&x<=619&&y>=193&&y<=233)
+	{
+		mousecleck=true;
+		toolnum=3;
+	    TOOLDC=GAMEDC2;
+	
+	}
+
+	
+	
+}
+
+
+
+void tool(HDC DC2)
+{
+
+           
+               if(mousecleck==true)
+			   {
+				   if(toolnum==1)
+			     ::TransparentBlt(DC2,pt.x-23,pt.y-23,48,48,TOOLDC,0,0,48,48,RGB(1, 1, 1));
+				
+				   else if(toolnum==2)
+			     ::TransparentBlt(DC2,pt.x-23,pt.y-23,48,48,TOOLDC,0,0,48,48,RGB(1, 1, 1));
+				  
+					else if(toolnum==3)
+			      ::TransparentBlt(DC2,pt.x-23,pt.y-23,48,64,TOOLDC,0,0,48,64,RGB(1, 1, 1));				  
+			   }
+	
+}
+
+
+
+void draw(HDC DC2,int x,int y)
+{
+if(mousecleck==false||(x>=14&&x<=88&&y>=0&&y<=295||x>88&&x<=189&&y>=233&&y<=297||
+   x>=179&&x<=248&&y>=75&&y<=297||x>=230&&x<=472&&y>=74&&y<=136||x>=403&&x<=474&&y>=74&&y<=459
+   ||x>=300&&x<=473&&y>=395&&y<=457||x>=300&&x<=372&&y>=299&&y<=457||x>=79&&x<=372&&y>=300&&y<=362
+   ||x>=81&&x<=152&&y>=300&&y<=478||x>=482))
+{
+//声音提示错误不能建造的地方
+	
+}
+else
+{
+	
+//建造
+	mousecleck=false;
+	if(toolnum==1&&money>=500)
+	{
+	 nowbuild++;
+	 bu[nowbuild].which=1;
+     bu[nowbuild].show=true;
+	 bu[nowbuild].x=pt.x-23;
+	 bu[nowbuild].y=pt.y-23;
+	 bu[nowbuild].r=80;
+     bu[nowbuild].gongji=150;
+	 money-=500;
+	}
+	else if(toolnum==2&&money>=1000)
+	{
+     nowbuild++;
+	 bu[nowbuild].which=2;
+     bu[nowbuild].show=true;
+	 bu[nowbuild].x=pt.x-23;
+	 bu[nowbuild].y=pt.y-23;
+	 bu[nowbuild].r=80;
+	 bu[nowbuild].gongji=100;
+	 money-=1000;
+	}	
+	else if(toolnum==3&&money>=8000)
+	{
+	 nowbuild++;
+	 bu[nowbuild].which=3;
+     bu[nowbuild].show=true;
+	 bu[nowbuild].x=pt.x-23;
+	 bu[nowbuild].y=pt.y-23;
+	 bu[nowbuild].r=200;
+	 bu[nowbuild].gongji=300;
+	 money-=8000;
+	}	
+
+}
+
+
+}
+
+
+
+void drawinfo(HDC DC2,int x,int y)
+{
+
+	if(x>=520&&x<=555&&y>=193&&y<=233)
+	{
+		
+	info.which=1;
+		
+		
+	}
+	else if(x>=555&&x<=584&&y>=193&&y<=233)
+	{
+	  info.which=2;
+	
+	}
+	else if(x>=590&&x<=619&&y>=193&&y<=233)
+	{
+	  info.which=3;
+	}
+
+else
+info.which=0;
+
+
+}
+
+
+
+
+
+void checkinfo(HDC DC2,int x,int y)
+{
+
+                   for(pp=0;pp<=nowbuild;pp++)
+				{	
+					   if(x>(bu[pp].x+23-10)&&x<(bu[pp].x+23+10)&&y>(bu[pp].y+23-7)&&y<(bu[pp].y+23+16))
+					   {
+						   if(bu[pp].which==1)
+						   {
+							   info.x=bu[pp].x;
+                               info.y=bu[pp].y;
+							   info.downwhich=1;
+                         	   info.gongji=bu[pp].gongji;
+							   info.fanwei=bu[pp].r;
+							   info.who=pp;
+						   }
+						   else if(bu[pp].which==2)
+						   {
+							   info.x=bu[pp].x;
+                               info.y=bu[pp].y;
+							   info.downwhich=2;
+                         	   info.gongji=bu[pp].gongji;
+							   info.fanwei=bu[pp].r;
+							   info.who=pp;
+						   }
+						   else if(bu[pp].which==3)
+						   {
+							   info.x=bu[pp].x;
+                               info.y=bu[pp].y;
+							   info.downwhich=3;
+                         	   info.gongji=bu[pp].gongji;
+							   info.fanwei=bu[pp].r;
+							   info.who=pp;
+						   }
+                           
+						   break;
+					   }
+					   else
+					   {
+						   if(x>529&&x<603&&y>450&&y<469&&info.downwhich==1&&money>=500)
+						   {
+						   bu[info.who].gongji+=100;
+						   info.gongji=bu[info.who].gongji;
+						   info.fanwei=bu[info.who].r;
+						   money-=500;
+						    break;
+						   }
+						   
+						   else if(x>529&&x<603&&y>450&&y<469&&info.downwhich==2&&money>=1000)
+						   {
+						   bu[info.who].gongji+=100;
+						   info.gongji=bu[info.who].gongji;
+						   info.fanwei=bu[info.who].r;
+						   money-=1000;
+						    break;
+						   }
+						   else if(x>529&&x<603&&y>450&&y<469&&info.downwhich==3&&money>=2000)
+						   {
+						   bu[info.who].gongji+=100;
+						   info.gongji=bu[info.who].gongji;
+						   info.fanwei=bu[info.who].r;
+						   money-=2000;
+						    break;
+						   }
+						   else
+						   {info.downwhich=0;}
+
+
+					   }
+
+					   
+				}	
+
+}
+
+
+
+void story(HDC DC2,HDC windowDC,int &money)
+{
+	if(shengming>0)
+	{
+		char buuuu[40];
+		::SetTextColor(DC2,RGB(0,0,0));
+		::SetBkMode(DC2,TRANSPARENT);
+		sprintf(buuuu,"关卡:%d   生命:%d ",jishu,shengming);
+		::TextOut(DC2,129,458,buuuu,strlen(buuuu));
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+////////////////////////////////    第1关     //////////////////////////////////////////////////////
+		if(jishu==1)
+				{
+					if(kaiguan[1]==false)
+					{				
+						for(ll=0;ll<5;ll++)   
+						{
+							foe[ll].blood=20;
+							foe[ll].end=false;
+							foe[ll].jishu=0;
+							foe[ll].life=true;
+							foe[ll].fangyu=-200;
+							foe[ll].x=35;
+							foe[ll].y=0;	
+							foe[ll].upmoney=false;
+						}				
+						int ff=0;
+						for(int i=0;i<5;i++)
+						{foe[i].y-=ff;
+						ff+=30;
+						}				
+						kaiguan[1]=true;				
+					}
+			
+					guanka[1]=0;
+					for(ll=0;ll<5;ll++)   
+					{
+						if(foe[ll].end!=true)
+							foe[ll].run1(DC2,windowDC,money,shengming);
+						guanka[1]+= foe[ll].jishu;
+					}
+			
+					if(guanka[1]==5)
+						jishu++;
+			
+					}
+		////////////////////////////////    第2关     //////////////////////////////////////////////////////
+		else if(jishu==2)
+				{
+					if(kaiguan[2]==false)
+					{				
+						for(ll=0;ll<5;ll++)   
+						{
+							foe[ll].blood=240;
+							foe[ll].end=false;
+							foe[ll].jishu=0;
+							foe[ll].life=true;
+							foe[ll].fangyu=-100;
+							foe[ll].x=35;
+							foe[ll].y=0;	
+							foe[ll].upmoney=false;
+						}				
+						int ff=0;
+						for(int i=0;i<6;i++)
+						{foe[i].y-=ff;
+						ff+=30;
+						}				
+						kaiguan[2]=true;				
+					}
+			
+					guanka[2]=0;
+					for(ll=0;ll<5;ll++)   
+					{
+						if(foe[ll].end!=true)
+							foe[ll].run3(DC2,windowDC,money,shengming);
+						guanka[2]+= foe[ll].jishu;
+					}
+			
+					if(guanka[2]==5)
+						jishu++;
+					}
+
+		/////////////////////////////////    第3关    ////////////////////////////////////////////////////////////
+
+		else if(jishu==3)
+				{
+					if(kaiguan[3]==false)
+					{				
+						for(ll=0;ll<6;ll++)   
+						{
+							foe[ll].blood=240;
+							foe[ll].end=false;
+							foe[ll].jishu=0;
+							foe[ll].life=true;
+							foe[ll].fangyu=-80;
+							foe[ll].x=35;
+							foe[ll].y=0;
+							foe[ll].upmoney=false;
+						}				
+						int ff=0;
+						for(int i=0;i<6;i++)
+						{foe[i].y-=ff;
+						ff+=30;
+						}				
+						kaiguan[3]=true;				
+					}
+			
+					guanka[3]=0;
+					for(ll=0;ll<6;ll++)   
+					{
+						if(foe[ll].end!=true)
+							foe[ll].run4(DC2,windowDC,money,shengming);
+						guanka[3]+= foe[ll].jishu;
+					}
+			
+					if(guanka[3]==6)
+						jishu++;
+			
+					}
+
+		/////////////////////////////////    第4关    ////////////////////////////////////////////////////////////
+		else if(jishu==4)
+				{
+					if(kaiguan[4]==false)
+					{				
+						for(ll=0;ll<6;ll++)   
+						{
+							foe[ll].blood=240;
+							foe[ll].end=false;
+							foe[ll].jishu=0;
+							foe[ll].life=true;
+							foe[ll].fangyu=-50;
+							foe[ll].x=35;
+							foe[ll].y=0;
+							foe[ll].upmoney=false;
+						}				
+						int ff=0;
+						for(int i=0;i<6;i++)
+						{foe[i].y-=ff;
+						ff+=30;
+						}				
+						kaiguan[4]=true;				
+					}
+			
+					guanka[4]=0;
+					for(ll=0;ll<6;ll++)   
+					{
+						if(foe[ll].end!=true)
+							foe[ll].run3(DC2,windowDC,money,shengming);
+						guanka[4]+= foe[ll].jishu;
+					}
+			
+					if(guanka[4]==6)
+						jishu++;
+			
+					}
+
+		else if(jishu==5)
+		{
+		char wi1n[50];
+			sprintf(wi1n, "Congratulation!! you are win!!");
+			::TextOut(DC2, 129, 458, wi1n, strlen(wi1n));
+		}
+
+	}
+
+
+
+
+
+}
